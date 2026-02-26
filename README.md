@@ -1,7 +1,6 @@
-# added by [X] LLM model
-# Twitch Chat CLI
+# Chatomatic
 
-A lightweight C++ CLI tool for connecting to Twitch chat - both live IRC and VOD chat downloads. Zero setup required for read-only access.
+A lightweight C++ CLI tool for connecting to Twitch chat both live IRC and VOD chat downloads. Zero setup required for read-only access.
 
 ## Quick Start
 
