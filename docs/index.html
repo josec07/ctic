@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTIC - Chat Twitch Intelligence CLI</title>
+    <meta name="description" content="Detect clip-worthy moments from Twitch chat in real-time. Open source CLI tool with zero-setup IRC and configurable detection.">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace;
+            background: #0d1117;
+            color: #c9d1d9;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        a { color: #58a6ff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        header { text-align: center; margin-bottom: 3rem; }
+        .logo { max-width: 100%; height: auto; margin-bottom: 1rem; }
+        h1 { font-size: 2.5rem; margin-bottom: 0.5rem; color: #f0f6fc; }
+        .tagline { font-size: 1.1rem; color: #8b949e; }
+        .buttons { margin: 2rem 0; }
+        .btn {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            margin: 0.5rem;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+        .btn-primary { background: #238636; color: #fff; }
+        .btn-secondary { background: #21262d; border: 1px solid #30363d; color: #c9d1d9; }
+        section { margin: 3rem 0; }
+        h2 { 
+            font-size: 1.5rem; 
+            margin-bottom: 1rem; 
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #21262d;
+            color: #f0f6fc;
+        }
+        pre {
+            background: #161b22;
+            padding: 1.25rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 0.9rem;
+            border: 1px solid #30363d;
+        }
+        .prompt { color: #8b949e; }
+        .output { color: #7ee787; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.85rem;
+        }
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border: 1px solid #30363d;
+        }
+        th { background: #161b22; color: #8b949e; }
+        .demo-placeholder {
+            background: #161b22;
+            border: 2px dashed #30363d;
+            border-radius: 6px;
+            padding: 3rem;
+            text-align: center;
+            color: #8b949e;
+        }
+        .features { list-style: none; }
+        .features li { padding: 0.5rem 0; }
+        .features li::before { content: "✓ "; color: #7ee787; }
+        footer {
+            margin-top: 4rem;
+            padding-top: 2rem;
+            border-top: 1px solid #21262d;
+            text-align: center;
+            color: #8b949e;
+            font-size: 0.9rem;
+        }
+        .chatomatic { 
+            color: #a371f7;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <img src="assets/logo.svg" alt="CTIC Logo" class="logo" style="max-height: 200px;">
+        <h1>CTIC</h1>
+        <p class="tagline">Detect clip-worthy moments from Twitch chat in real-time</p>
+        <div class="buttons">
+            <a href="https://github.com/yourusername/ctic" class="btn btn-primary">GitHub</a>
+            <a href="#install" class="btn btn-secondary">Download</a>
+        </div>
+    </header>
+
+    <section>
+        <h2>Quick Start</h2>
+        <pre><span class="prompt">$</span> ./ctic add xqc https://twitch.tv/xqc
+<span class="prompt">$</span> ./ctic run
+<span class="output">[THREAD:xqc] Connected to #xqcow
+[THREAD:xqc] Detecting moments...
+2026-03-01T10:21:06Z matched POG burst=4 users=4</span></pre>
+    </section>
+
+    <section>
+        <h2>How It Works</h2>
+        <p>CTIC connects to Twitch IRC anonymously (no OAuth needed) and watches for chat bursts — moments when multiple viewers react simultaneously with similar words.</p>
+        <pre>Twitch IRC → Parse → Word Match → Burst Detect → CSV Output</pre>
+        <p>Results are saved to CSV files with timestamps, matched words, burst counts, and sample messages.</p>
+    </section>
+
+    <section>
+        <h2>Sample Output</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Word</th>
+                    <th>Burst</th>
+                    <th>Users</th>
+                    <th>Tier</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>2026-03-01T10:21:06Z</td>
+                    <td>POG</td>
+                    <td>4</td>
+                    <td>4</td>
+                    <td>high</td>
+                </tr>
+                <tr>
+                    <td>2026-03-01T10:21:30Z</td>
+                    <td>W</td>
+                    <td>8</td>
+                    <td>6</td>
+                    <td>medium</td>
+                </tr>
+                <tr>
+                    <td>2026-03-01T10:22:15Z</td>
+                    <td>LOST</td>
+                    <td>5</td>
+                    <td>5</td>
+                    <td>high-negative</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section>
+        <h2>Demo</h2>
+        <div class="demo-placeholder">
+            <p>Terminal recording coming soon</p>
+            <p style="font-size: 0.85rem; margin-top: 1rem;">
+                <code>docs/assets/demo.gif</code>
+            </p>
+        </div>
+    </section>
+
+    <section id="install">
+        <h2>Install</h2>
+        <pre><span class="prompt">$</span> git clone https://github.com/yourusername/ctic
+<span class="prompt">$</span> cd ctic
+<span class="prompt">$</span> make
+<span class="prompt">$</span> ./ctic --help</pre>
+    </section>
+
+    <section>
+        <h2>Features</h2>
+        <ul class="features">
+            <li>Zero-setup IRC — Anonymous Twitch connection (no OAuth)</li>
+            <li>Multi-creator monitoring — Watch multiple channels simultaneously</li>
+            <li>Configurable detection — Tune thresholds via JSON profiles</li>
+            <li>Tiered word lists — High, medium, easy, high-negative</li>
+            <li>CSV output — Full metadata for analysis</li>
+            <li>Open source — GPL v3</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Configurable</h2>
+        <p>Edit <code>.ctic/profiles/balanced.json</code> to adjust detection sensitivity:</p>
+        <pre>{
+  "tiers": {
+    "high": {
+      "burst_threshold": 3,
+      "min_word_length": 3,
+      "cooldown_seconds": 60,
+      "require_unique_users": 2
+    }
+  }
+}</pre>
+        <p>See <a href="tutorial.html">tutorial.md</a> for full tuning guide.</p>
+    </section>
+
+    <footer>
+        <p>
+            <a href="https://github.com/yourusername/ctic">GitHub</a> · 
+            <a href="tutorial.html">Docs</a> · 
+            <a href="references.html">References</a>
+        </p>
+        <p style="margin-top: 1rem;">
+            Built for <a href="https://chatomatic.tv" class="chatomatic">chatomatic.tv</a> — 
+            SaaS and custom solutions for streamers
+        </p>
+        <p style="margin-top: 0.5rem; font-size: 0.8rem;">
+            GPL v3 · 2024
+        </p>
+    </footer>
+</body>
+</html>
