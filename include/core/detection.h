@@ -25,6 +25,9 @@ struct DetectionConfig {
     double levenshtein_threshold = 0.8;
     bool use_levenshtein = true;
     std::string tier_name = "medium";
+    int min_word_length = 1;
+    int cooldown_seconds = 30;
+    int require_unique_users = 1;
 };
 
 class BurstDetector {
@@ -56,6 +59,8 @@ private:
     BurstDetector burst_detector_;
     int total_matches_ = 0;
     int total_bursts_ = 0;
+    std::chrono::system_clock::time_point last_detection_time_;
+    bool in_cooldown_ = false;
     
 public:
     Detector(const DetectionConfig& config);

@@ -32,6 +32,9 @@ void Monitor::initializeDetectors(ConfigManager& config_mgr) {
         det_config.levenshtein_threshold = tier_config.levenshtein_threshold;
         det_config.use_levenshtein = tier_config.use_levenshtein;
         det_config.tier_name = tier_name;
+        det_config.min_word_length = tier_config.min_word_length;
+        det_config.cooldown_seconds = tier_config.cooldown_seconds;
+        det_config.require_unique_users = tier_config.require_unique_users;
         
         detectors_[tier_name] = std::make_unique<Detector>(det_config);
     }

@@ -137,17 +137,26 @@ std::string TwitchIRC::read_line() {
 }
 
 bool TwitchIRC::parse_message(const std::string& raw, std::string& username, std::string& content) {
-    size_t privmsg_pos = raw.find("PRIVMSG #" + channel_ + " :");
+    size_t privmsg_pos = raw.find("PRIVMSG #" + channel_);
     if (privmsg_pos == std::string::npos) return false;
     
     size_t user_start = raw.find(":");
     if (user_start == std::string::npos) return false;
+    
+    if (raw[0] == '@') {
+        size_t tag_end = raw.find(" :");
+        if (tag_end != std::string::npos) {
+            user_start = raw.find(":", tag_end);
+            if (user_start == std::string::npos) return false;
+        }
+    }
+    
     size_t user_end = raw.find("!", user_start);
     if (user_end == std::string::npos) return false;
     username = raw.substr(user_start + 1, user_end - user_start - 1);
     
-    size_t content_start = raw.find(" :", privmsg_pos);
-    if (content_start == std::string::npos) return false;
+    size_t content_start = raw.rfind(" :");
+    if (content_start == std::string::npos || content_start < privmsg_pos) return false;
     content = raw.substr(content_start + 2);
     
     return true;

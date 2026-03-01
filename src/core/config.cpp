@@ -16,12 +16,16 @@ ConfigManager::ConfigManager() {
 }
 
 bool ConfigManager::ensure_ctic_dir() {
-    std::string cmd = "mkdir -p " + ctic_dir_ + "/creators " + ctic_dir_ + "/outputs " + ctic_dir_ + "/detectors";
+    std::string cmd = "mkdir -p " + ctic_dir_ + "/creators " + ctic_dir_ + "/outputs " + ctic_dir_ + "/detectors " + ctic_dir_ + "/profiles";
     return system(cmd.c_str()) == 0;
 }
 
 std::string ConfigManager::get_creators_dir() {
     return ctic_dir_ + "/creators";
+}
+
+std::string ConfigManager::get_profiles_dir() {
+    return ctic_dir_ + "/profiles";
 }
 
 CreatorConfig ConfigManager::load_creator(const std::string& name) {
@@ -60,6 +64,8 @@ CreatorConfig ConfigManager::load_creator(const std::string& name) {
     config.name = name;
     config.channel = parse_string("channel");
     config.twitch_url = parse_string("twitch_url");
+    config.profile = parse_string("profile");
+    if (config.profile.empty()) config.profile = "balanced";
     config.detector_config_id = parse_string("detector_config");
     config.created_at = parse_string("created_at");
     config.last_monitored = parse_string("last_monitored");
@@ -102,6 +108,7 @@ bool ConfigManager::save_creator(const CreatorConfig& config) {
     file << "  \"name\": \"" << config.name << "\",\n";
     file << "  \"channel\": \"" << config.channel << "\",\n";
     file << "  \"twitch_url\": \"" << config.twitch_url << "\",\n";
+    file << "  \"profile\": \"" << config.profile << "\",\n";
     file << "  \"enabled_tiers\": [";
     for (size_t i = 0; i < config.enabled_tiers.size(); ++i) {
         file << "\"" << config.enabled_tiers[i] << "\"";
@@ -159,6 +166,9 @@ std::string ConfigManager::get_output_dir(const std::string& creator, const std:
 TierConfig ConfigManager::load_tier_config(const std::string& tier_name) {
     TierConfig config;
     config.tier_name = tier_name;
+    config.window_seconds = 30;
+    config.levenshtein_threshold = 0.8;
+    config.use_levenshtein = true;
     
     if (tier_name == "high") {
         config.words = {
@@ -170,6 +180,9 @@ TierConfig ConfigManager::load_tier_config(const std::string& tier_name) {
             "MOVIE", "THEATRE", "MAIN CHARACTER", "PROTAGONIST", "HIM", "HERO", "GOATED"
         };
         config.burst_threshold = 3;
+        config.min_word_length = 3;
+        config.cooldown_seconds = 60;
+        config.require_unique_users = 2;
     } else if (tier_name == "high-negative") {
         config.words = {
             "L", "LMAO", "LFMAO", "RIP", "F", "F IN CHAT", "LOST", "BOT", "DOG",
@@ -179,7 +192,10 @@ TierConfig ConfigManager::load_tier_config(const std::string& tier_name) {
             "LITERALLY UNPLAYABLE", "WHAT WAS THAT", "INTING", "THROWING", "GRIEFING",
             "NPC", "HARDSTUCK", "BOOSTED", "CARRIED", "BAD", "TERRIBLE", "HORRIBLE"
         };
-        config.burst_threshold = 3;
+        config.burst_threshold = 5;
+        config.min_word_length = 1;
+        config.cooldown_seconds = 45;
+        config.require_unique_users = 3;
     } else if (tier_name == "medium") {
         config.words = {
             "W", "GG", "GGS", "EZ", "NICE", "SHEESH", "DAMN", "OH", "YT", "PEPE",
@@ -188,7 +204,10 @@ TierConfig ConfigManager::load_tier_config(const std::string& tier_name) {
             "MONKAGUN", "PEPELA", "FEELSMAN", "SAVAGE", "HEAT", "ON FIRE", "COOKING",
             "LETHAL", "DEADLY", "VICIOUS", "CRUEL", "UNFAIR", "UNMATCHED", "INHUMAN"
         };
-        config.burst_threshold = 5;
+        config.burst_threshold = 8;
+        config.min_word_length = 1;
+        config.cooldown_seconds = 90;
+        config.require_unique_users = 4;
     } else if (tier_name == "easy") {
         config.words = {
             "lol", "wow", "true", "real", "?", "??", "xd", "lmao", "ok", "sure",
@@ -197,10 +216,58 @@ TierConfig ConfigManager::load_tier_config(const std::string& tier_name) {
             "honestly", "probably", "maybe", "fr fr", "no cap", "no cap fr", "bet",
             "say less", "facts", "fax", "printer", "slaps", "hard", "valid", "fair"
         };
-        config.burst_threshold = 10;
+        config.burst_threshold = 15;
+        config.min_word_length = 2;
+        config.cooldown_seconds = 120;
+        config.require_unique_users = 5;
     }
     
     return config;
+}
+
+TierConfig ConfigManager::load_profile_tier(const std::string& profile_name, const std::string& tier_name) {
+    TierConfig base_config = load_tier_config(tier_name);
+    
+    std::string profile_path = ctic_dir_ + "/profiles/" + profile_name + ".json";
+    std::ifstream file(profile_path);
+    if (!file.is_open()) {
+        return base_config;
+    }
+    
+    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    file.close();
+    
+    size_t tier_pos = content.find("\"" + tier_name + "\"");
+    if (tier_pos == std::string::npos) {
+        return base_config;
+    }
+    
+    size_t block_start = content.find("{", tier_pos);
+    size_t block_end = content.find("}", block_start);
+    if (block_start == std::string::npos || block_end == std::string::npos) {
+        return base_config;
+    }
+    
+    std::string block = content.substr(block_start, block_end - block_start + 1);
+    
+    auto parse_int_override = [&block](const std::string& key, int default_val) -> int {
+        size_t pos = block.find("\"" + key + "\"");
+        if (pos == std::string::npos) return default_val;
+        size_t num_start = block.find_first_of("0123456789", pos);
+        if (num_start == std::string::npos) return default_val;
+        try {
+            return std::stoi(block.substr(num_start));
+        } catch (...) {
+            return default_val;
+        }
+    };
+    
+    base_config.burst_threshold = parse_int_override("burst_threshold", base_config.burst_threshold);
+    base_config.min_word_length = parse_int_override("min_word_length", base_config.min_word_length);
+    base_config.cooldown_seconds = parse_int_override("cooldown_seconds", base_config.cooldown_seconds);
+    base_config.require_unique_users = parse_int_override("require_unique_users", base_config.require_unique_users);
+    
+    return base_config;
 }
 
 DetectorConfig ConfigManager::load_detector_config(const std::string& detector_id) {

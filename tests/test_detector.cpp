@@ -95,12 +95,18 @@ TEST_CASE("Detector process_message", "[detector]") {
     
     SECTION("burst detected at threshold") {
         detector.process_message("user1", "W", now);
-        detector.process_message("user2", "W", now + std::chrono::milliseconds(100));
-        
-        auto result = detector.process_message("user3", "W", now + std::chrono::milliseconds(200));
+        auto result = detector.process_message("user2", "W", now + std::chrono::milliseconds(100));
         REQUIRE(result.detected);
         REQUIRE(result.burst_count >= 2);
         REQUIRE(detector.total_bursts() >= 1);
+    }
+    
+    SECTION("cooldown prevents immediate re-detection") {
+        detector.process_message("user1", "W", now);
+        detector.process_message("user2", "W", now + std::chrono::milliseconds(100));
+        
+        auto result3 = detector.process_message("user3", "W", now + std::chrono::milliseconds(200));
+        REQUIRE_FALSE(result3.detected);
     }
 }
 

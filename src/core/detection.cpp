@@ -62,19 +62,35 @@ BurstResult Detector::process_message(const std::string& username, const std::st
                                        std::chrono::system_clock::time_point timestamp) {
     BurstResult result;
     
+    if (in_cooldown_) {
+        auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+            timestamp - last_detection_time_).count();
+        if (elapsed < config_.cooldown_seconds) {
+            return result;
+        }
+        in_cooldown_ = false;
+    }
+    
     if (!check_match(content, result.matched_word, result.sentiment)) {
+        return result;
+    }
+    
+    if (static_cast<int>(result.matched_word.length()) < config_.min_word_length) {
         return result;
     }
     
     total_matches_++;
     
     int count = burst_detector_.count_burst(result.matched_word, username, result.matched_word, timestamp);
+    int unique_users = burst_detector_.unique_users();
     
-    if (count >= config_.burst_threshold) {
+    if (count >= config_.burst_threshold && unique_users >= config_.require_unique_users) {
         result.detected = true;
         result.burst_count = count;
-        result.users_matched = burst_detector_.unique_users();
+        result.users_matched = unique_users;
         total_bursts_++;
+        last_detection_time_ = timestamp;
+        in_cooldown_ = true;
     }
     
     return result;

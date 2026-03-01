@@ -122,12 +122,18 @@ TEST_CASE("ConfigManager load_tier_config", "[config]") {
     SECTION("medium tier defaults") {
         TierConfig config = mgr.load_tier_config("medium");
         REQUIRE(config.tier_name == "medium");
-        REQUIRE(config.burst_threshold == 5);
+        REQUIRE(config.burst_threshold == 8);
+        REQUIRE(config.min_word_length == 1);
+        REQUIRE(config.cooldown_seconds == 90);
+        REQUIRE(config.require_unique_users == 4);
     }
     
     SECTION("easy tier defaults") {
         TierConfig config = mgr.load_tier_config("easy");
         REQUIRE(config.tier_name == "easy");
-        REQUIRE(config.burst_threshold == 10);
+        REQUIRE(config.burst_threshold == 15);
+        REQUIRE(config.min_word_length == 2);
+        REQUIRE(config.cooldown_seconds == 120);
+        REQUIRE(config.require_unique_users == 5);
     }
 }

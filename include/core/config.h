@@ -13,6 +13,7 @@ struct CreatorConfig {
     std::string channel;
     std::string twitch_url;
     std::vector<std::string> enabled_tiers;
+    std::string profile = "balanced";
     std::string detector_config_id;
     std::string created_at;
     std::string last_monitored;
@@ -27,6 +28,9 @@ struct TierConfig {
     int window_seconds = 30;
     double levenshtein_threshold = 0.8;
     bool use_levenshtein = true;
+    int min_word_length = 1;
+    int cooldown_seconds = 30;
+    int require_unique_users = 1;
 };
 
 struct DetectorConfig {
@@ -54,10 +58,12 @@ public:
     bool creator_exists(const std::string& name);
     
     TierConfig load_tier_config(const std::string& tier_name);
+    TierConfig load_profile_tier(const std::string& profile_name, const std::string& tier_name);
     DetectorConfig load_detector_config(const std::string& detector_id);
     
     std::string get_output_dir(const std::string& creator, const std::string& tier);
     std::string get_creators_dir();
+    std::string get_profiles_dir();
 };
 
 std::string format_timestamp(std::chrono::system_clock::time_point tp);
