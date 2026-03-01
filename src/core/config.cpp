@@ -161,13 +161,42 @@ TierConfig ConfigManager::load_tier_config(const std::string& tier_name) {
     config.tier_name = tier_name;
     
     if (tier_name == "high") {
-        config.words = {"INSANE", "CLUTCH", "POGCHAMP", "ACE", "PENTA"};
+        config.words = {
+            "POG", "POGGERS", "POGCHAMP", "INSANE", "LETS GO", "CLUTCH", "ACE", "PENTA",
+            "CRACKED", "GOATED", "DIFF", "FINAL", "K", "GOD", "CRITICAL", "MONSTER",
+            "LEGENDARY", "NUTS", "WTF", "OMFG", "SHEESH", "DAMN", "WHOA", "NO WAY",
+            "YOOO", "GOAT", "FINAL BOSS", "200IQ", "BIG BRAIN", "ONE TAP", "SPEEDRUN",
+            "WORLD RECORD", "HES HIM", "DIFFERENT BREED", "ABSOLUTE UNIT", "CINEMATIC",
+            "MOVIE", "THEATRE", "MAIN CHARACTER", "PROTAGONIST", "HIM", "HERO", "GOATED"
+        };
+        config.burst_threshold = 3;
+    } else if (tier_name == "high-negative") {
+        config.words = {
+            "L", "LMAO", "LFMAO", "RIP", "F", "F IN CHAT", "LOST", "BOT", "DOG",
+            "TRASH", "CRINGE", "OMEGALUL", "HUHH", "AIM ASSIST", "WORST", "FAILED",
+            "CHOKE", "BRUH", "NOT LIKE THIS", "NOT THE WAY", "NOOO", "YIKES",
+            "EMBARRASSING", "OOF", "SKILL ISSUE", "REPORT", "UNINSTALL", "FIX YOUR GAME",
+            "LITERALLY UNPLAYABLE", "WHAT WAS THAT", "INTING", "THROWING", "GRIEFING",
+            "NPC", "HARDSTUCK", "BOOSTED", "CARRIED", "BAD", "TERRIBLE", "HORRIBLE"
+        };
         config.burst_threshold = 3;
     } else if (tier_name == "medium") {
-        config.words = {"W", "POG", "GGS", "NICE", "LETS GO"};
+        config.words = {
+            "W", "GG", "GGS", "EZ", "NICE", "SHEESH", "DAMN", "OH", "YT", "PEPE",
+            "MONKA", "KEKW", "BASED", "TRUE", "REAL", "MOGGED", "OWNED", "SAUCE",
+            "CLEAN", "NASTY", "P", "VP", "POGU", "POGGIES", "KEKL", "KEKWAIT",
+            "MONKAGUN", "PEPELA", "FEELSMAN", "SAVAGE", "HEAT", "ON FIRE", "COOKING",
+            "LETHAL", "DEADLY", "VICIOUS", "CRUEL", "UNFAIR", "UNMATCHED", "INHUMAN"
+        };
         config.burst_threshold = 5;
     } else if (tier_name == "easy") {
-        config.words = {"lol", "wow", "nice", "gg", "crazy"};
+        config.words = {
+            "lol", "wow", "true", "real", "?", "??", "xd", "lmao", "ok", "sure",
+            "yeah", "no", "yes", "ok", "hmm", "oof", "rip", "loll", "lool", "lmaoo",
+            "bruh", "bro", "man", "dude", "fr", "for real", "actually", "literally",
+            "honestly", "probably", "maybe", "fr fr", "no cap", "no cap fr", "bet",
+            "say less", "facts", "fax", "printer", "slaps", "hard", "valid", "fair"
+        };
         config.burst_threshold = 10;
     }
     
@@ -183,6 +212,7 @@ DetectorConfig ConfigManager::load_detector_config(const std::string& detector_i
     
     config.tiers = {
         load_tier_config("high"),
+        load_tier_config("high-negative"),
         load_tier_config("medium"),
         load_tier_config("easy")
     };

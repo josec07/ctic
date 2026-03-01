@@ -12,7 +12,7 @@ BurstDetector::BurstDetector(int window_sec, int threshold, double sim_threshold
     , use_levenshtein_(use_lev) {}
 
 int BurstDetector::count_burst(const std::string& word, const std::string& username,
-                               const std::string& content, std::chrono::system_clock::time_point now) {
+                                const std::string& matched_word, std::chrono::system_clock::time_point now) {
     auto cutoff = now - std::chrono::seconds(window_seconds_);
     
     while (!recent_matches_.empty() && recent_matches_.front().timestamp < cutoff) {
@@ -23,7 +23,7 @@ int BurstDetector::count_burst(const std::string& word, const std::string& usern
     int count = 1;
     
     for (const auto& entry : recent_matches_) {
-        std::string norm_entry = normalize_text(entry.content);
+        std::string norm_entry = normalize_text(entry.matched_word);
         
         if (use_levenshtein_) {
             double sim = calculate_similarity(norm_word, norm_entry);
@@ -37,7 +37,7 @@ int BurstDetector::count_burst(const std::string& word, const std::string& usern
         }
     }
     
-    recent_matches_.push_back({now, username, content});
+    recent_matches_.push_back({now, username, matched_word});
     return count;
 }
 
@@ -68,7 +68,7 @@ BurstResult Detector::process_message(const std::string& username, const std::st
     
     total_matches_++;
     
-    int count = burst_detector_.count_burst(result.matched_word, username, content, timestamp);
+    int count = burst_detector_.count_burst(result.matched_word, username, result.matched_word, timestamp);
     
     if (count >= config_.burst_threshold) {
         result.detected = true;

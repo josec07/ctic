@@ -96,4 +96,62 @@ TEST_CASE("word_matches", "[text]") {
         REQUIRE(word_matches("pog", "POG MOMENT", 0.8));
         REQUIRE(word_matches("Pog", "pog moment", 0.8));
     }
+    
+    SECTION("repeated chars match") {
+        REQUIRE(word_matches("W", "WWWW"));
+        REQUIRE(word_matches("W", "W W W W"));
+        REQUIRE(word_matches("L", "LOL"));
+    }
+    
+    SECTION("substring with repeated chars") {
+        REQUIRE(word_matches("W", "WWW POG"));
+        REQUIRE(word_matches("POG", "POGGERS"));
+    }
+}
+
+TEST_CASE("collapse_repeated_chars", "[text]") {
+    SECTION("no repeated chars") {
+        REQUIRE(collapse_repeated_chars("ABC") == "ABC");
+        REQUIRE(collapse_repeated_chars("POG") == "POG");
+    }
+    
+    SECTION("repeated chars collapsed") {
+        REQUIRE(collapse_repeated_chars("WWWW") == "W");
+        REQUIRE(collapse_repeated_chars("AAAA") == "A");
+        REQUIRE(collapse_repeated_chars("WWWAAA") == "WA");
+    }
+    
+    SECTION("empty string") {
+        REQUIRE(collapse_repeated_chars("") == "");
+    }
+    
+    SECTION("all same char") {
+        REQUIRE(collapse_repeated_chars("LLLLLLLLL") == "L");
+    }
+    
+    SECTION("mixed case preserved") {
+        REQUIRE(collapse_repeated_chars("WWWppp") == "Wp");
+    }
+}
+
+TEST_CASE("contains_word", "[text]") {
+    SECTION("word found") {
+        REQUIRE(contains_word("W", "WWWW"));
+        REQUIRE(contains_word("POG", "POGGERS"));
+        REQUIRE(contains_word("INSANE", "that was INSANE"));
+    }
+    
+    SECTION("word not found") {
+        REQUIRE_FALSE(contains_word("POG", "hello world"));
+        REQUIRE_FALSE(contains_word("W", "ABC"));
+    }
+    
+    SECTION("case insensitive") {
+        REQUIRE(contains_word("pog", "POG"));
+        REQUIRE(contains_word("W", "w"));
+    }
+    
+    SECTION("empty needle") {
+        REQUIRE(contains_word("", "anything"));
+    }
 }

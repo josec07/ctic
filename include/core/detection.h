@@ -32,7 +32,7 @@ private:
     struct MatchEntry {
         std::chrono::system_clock::time_point timestamp;
         std::string username;
-        std::string content;
+        std::string matched_word;
     };
     
     std::deque<MatchEntry> recent_matches_;
@@ -44,8 +44,8 @@ private:
 public:
     BurstDetector(int window_sec = 30, int threshold = 3, double sim_threshold = 0.8, bool use_lev = true);
     
-    int count_burst(const std::string& word, const std::string& username, 
-                    const std::string& content, std::chrono::system_clock::time_point now);
+    int count_burst(const std::string& word, const std::string& username,
+                    const std::string& matched_word, std::chrono::system_clock::time_point now);
     int unique_users() const;
     void reset();
 };

@@ -66,6 +66,7 @@ void Monitor::writeCSVHeader(const std::string& tier) {
         *file << "# Tier: " << tier << "\n";
         *file << "#\n";
         *file << "timestamp,matched_word,sentiment,burst_count,spike_z_score,users_matched,spike_intensity,config_id,sample_messages\n";
+        file->flush();
     }
 }
 

@@ -26,7 +26,7 @@ TEST_CASE("BurstDetector count_burst", "[detector]") {
         REQUIRE(count1 >= 1);
         
         auto later = now + std::chrono::seconds(1);
-        int count2 = detector.count_burst("POG", "user2", "POGGG", later);
+        int count2 = detector.count_burst("POG", "user2", "POG", later);
         REQUIRE(count2 > count1);
     }
 }
