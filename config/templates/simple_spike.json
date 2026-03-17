@@ -1,0 +1,57 @@
+{
+  "template_version": "1.0",
+  "name": "Simple Spike Detector",
+  "description": "Basic spike detection for chat activity surges",
+  "author": "CTIC",
+  "requirements": {
+    "plugins": ["spike_detector", "comprehensive_csv"],
+    "min_version": "3.0"
+  },
+  "variables": {
+    "CHANNEL": "${CHANNEL:shroud}",
+    "SPIKE_THRESHOLD": "${SPIKE_THRESHOLD:3.0}",
+    "WINDOW_SIZE": "${WINDOW_SIZE:60}",
+    "OUTPUT_PATH": "${OUTPUT_PATH:outputs/${CHANNEL}/${DATE}_spikes.csv}"
+  },
+  "pipeline": {
+    "nodes": [
+      {
+        "id": "input",
+        "type": "stream_input",
+        "config": {
+          "source": "twitch_irc",
+          "channel": "${CHANNEL}"
+        }
+      },
+      {
+        "id": "normalizer",
+        "type": "text_normalizer",
+        "inputs": ["input"],
+        "config": {
+          "lowercase": true,
+          "trim_spaces": true
+        }
+      },
+      {
+        "id": "spike",
+        "type": "spike_detector",
+        "inputs": ["normalizer"],
+        "config": {
+          "window_size": "${WINDOW_SIZE}",
+          "threshold": "${SPIKE_THRESHOLD}"
+        }
+      },
+      {
+        "id": "output",
+        "type": "comprehensive_csv",
+        "inputs": ["spike"],
+        "config": {
+          "path": "${OUTPUT_PATH}",
+          "include_lineage": true,
+          "include_all_scores": true,
+          "include_raw_text": true
+        }
+      }
+    ]
+  }
+}

@@ -1,35 +1,64 @@
+# CTIC Pipeline Engine Makefile
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Wextra -O2
-INCLUDES = -I./include
-LDFLAGS = 
+CXXFLAGS = -std=c++17 -Wall -O2 -I./include
+LDFLAGS = -ldl -pthread
 
+# Target executable
 TARGET = ctic
 
-SRC = src/main.cpp \
-      src/cli/commands.cpp \
-      src/core/config.cpp \
-      src/core/detection.cpp \
-      src/core/text.cpp \
-      src/core/chat_buffer.cpp \
-      src/core/spike_detector.cpp \
-      src/core/monitor.cpp \
-      src/providers/twitch_irc.cpp
+# Source files for pipeline engine
+SOURCES = src/main_pipeline.cpp
 
-OBJ = $(SRC:.cpp=.o)
+# Build directories
+BUILDDIR = build
+PLUGINDIR = plugins
+OUTPUTDIR = outputs
 
-all: $(TARGET)
+# Default target
+all: $(TARGET) plugins
 
-$(TARGET): $(OBJ)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
+# Build main executable
+$(TARGET): $(SOURCES) | $(BUILDDIR)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
-%.o: %.cpp
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -c -o $@ $<
+# Build plugins
+plugins:
+	$(MAKE) -C $(PLUGINDIR) all
 
+# Create build directories
+$(BUILDDIR) $(OUTPUTDIR):
+	mkdir -p $@
+
+# Run tests
+test: all
+	./$(TARGET) pipeline test
+
+# Clean build files
 clean:
-	rm -f $(TARGET) $(OBJ) src/*/*.o
+	rm -f $(TARGET)
+	rm -rf $(BUILDDIR) $(OUTPUTDIR)
+	$(MAKE) -C $(PLUGINDIR) clean
 
-test: $(TARGET)
-	./$(TARGET) --help
-	./$(TARGET) status
+# Install (copies to /usr/local/bin)
+install: $(TARGET)
+	cp $(TARGET) /usr/local/bin/
+	mkdir -p /usr/local/share/ctic
+	cp -r config /usr/local/share/ctic/
+	cp -r plugins /usr/local/share/ctic/
 
-.PHONY: all clean test
+# Help
+help:
+	@echo "CTIC Pipeline Engine"
+	@echo ""
+	@echo "Usage:"
+	@echo "  make          - Build everything"
+	@echo "  make plugins  - Build only plugins"
+	@echo "  make test     - Run tests"
+	@echo "  make clean    - Remove build files"
+	@echo "  make install  - Install to system"
+	@echo ""
+	@echo "Run pipeline:"
+	@echo "  ./ctic pipeline run --template simple_spike --channel shroud"
+	@echo "  ./ctic pipeline run --config my_pipeline.json"
+
+.PHONY: all plugins test clean install help
