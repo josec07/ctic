@@ -13,7 +13,6 @@ SRC = src/main.cpp \
       src/core/chat_buffer.cpp \
       src/core/spike_detector.cpp \
       src/core/monitor.cpp \
-      src/core/monitor_pool.cpp \
       src/providers/twitch_irc.cpp
 
 OBJ = $(SRC:.cpp=.o)
@@ -31,6 +30,6 @@ clean:
 
 test: $(TARGET)
 	./$(TARGET) --help
-	./$(TARGET) list
+	./$(TARGET) status
 
 .PHONY: all clean test

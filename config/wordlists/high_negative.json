@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "tier": "high-negative",
+  "description": "High-intensity negative reactions - criticism, fails, mistakes, frustration",
+  "words": [
+    "L", "LMAO", "LFMAO", "RIP", "F", "F IN CHAT", "LOST", "BOT", "DOG",
+    "TRASH", "CRINGE", "OMEGALUL", "HUHH", "AIM ASSIST", "WORST", "FAILED",
+    "CHOKE", "BRUH", "NOT LIKE THIS", "NOT THE WAY", "NOOO", "YIKES",
+    "EMBARRASSING", "OOF", "SKILL ISSUE", "REPORT", "UNINSTALL", "FIX YOUR GAME",
+    "LITERALLY UNPLAYABLE", "WHAT WAS THAT", "INTING", "THROWING", "GRIEFING",
+    "NPC", "HARDSTUCK", "BOOSTED", "CARRIED", "BAD", "TERRIBLE", "HORRIBLE"
+  ],
+  "metadata": {
+    "case_sensitive": false,
+    "collapse_repeated_chars": true,
+    "category": "negative",
+    "intensity": 5
+  }
+}

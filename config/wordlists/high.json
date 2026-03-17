@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "tier": "high",
+  "description": "High-intensity positive reactions - clutch moments, exceptional plays, peak hype",
+  "words": [
+    "POG", "POGGERS", "POGCHAMP", "INSANE", "LETS GO", "CLUTCH", "ACE", "PENTA",
+    "CRACKED", "GOATED", "DIFF", "FINAL", "K", "GOD", "CRITICAL", "MONSTER",
+    "LEGENDARY", "NUTS", "WTF", "OMFG", "SHEESH", "DAMN", "WHOA", "NO WAY",
+    "YOOO", "GOAT", "FINAL BOSS", "200IQ", "BIG BRAIN", "ONE TAP", "SPEEDRUN",
+    "WORLD RECORD", "HES HIM", "DIFFERENT BREED", "ABSOLUTE UNIT", "CINEMATIC",
+    "MOVIE", "THEATRE", "MAIN CHARACTER", "PROTAGONIST", "HIM", "HERO"
+  ],
+  "metadata": {
+    "case_sensitive": false,
+    "collapse_repeated_chars": true,
+    "category": "positive",
+    "intensity": 5
+  }
+}

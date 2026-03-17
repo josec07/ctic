@@ -4,6 +4,7 @@
 #include <vector>
 #include <unordered_set>
 #include <chrono>
+#include "../../include/nlohmann/json.hpp"
 
 namespace ctic {
 namespace core {
@@ -41,6 +42,9 @@ struct DetectorConfig {
     std::vector<TierConfig> tiers;
 };
 
+// Use nlohmann::json directly
+using json = nlohmann::json;
+
 class ConfigManager {
 private:
     std::string ctic_dir_;
@@ -60,6 +64,9 @@ public:
     TierConfig load_tier_config(const std::string& tier_name);
     TierConfig load_profile_tier(const std::string& profile_name, const std::string& tier_name);
     DetectorConfig load_detector_config(const std::string& detector_id);
+    
+    // New method to load word lists from JSON files
+    json load_wordlist(const std::string& tier_name);
     
     std::string get_output_dir(const std::string& creator, const std::string& tier);
     std::string get_creators_dir();
