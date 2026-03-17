@@ -1,5 +1,6 @@
 // CTIC Pipeline Engine - Main CLI
 #include "../include/pipeline/executor.h"
+#include "../include/models/model_manager.h"
 #include "../include/nlohmann/json.hpp"
 #include <iostream>
 #include <fstream>
@@ -7,6 +8,7 @@
 #include <map>
 
 using namespace ctic::pipeline;
+using namespace ctic::models;
 namespace fs = std::filesystem;
 
 // Template manager for loading templates
@@ -55,7 +57,7 @@ public:
 
 void printUsage() {
     std::cout << "CTIC Pipeline Engine v3.0" << std::endl;
-    std::cout << "The modular clip detection engine" << std::endl;
+    std::cout << "The modular clip detection engine with ML model support" << std::endl;
     std::cout << std::endl;
     std::cout << "Usage:" << std::endl;
     std::cout << "  ctic pipeline run --template <name> [options]" << std::endl;
@@ -63,6 +65,9 @@ void printUsage() {
     std::cout << "  ctic pipeline list" << std::endl;
     std::cout << "  ctic pipeline validate <config.json>" << std::endl;
     std::cout << "  ctic plugins list" << std::endl;
+    std::cout << "  ctic models list" << std::endl;
+    std::cout << "  ctic models info <model-id>" << std::endl;
+    std::cout << "  ctic models test <model-id> --text <sample>" << std::endl;
     std::cout << std::endl;
     std::cout << "Examples:" << std::endl;
     std::cout << "  ctic pipeline run --template simple_spike --channel shroud" << std::endl;
@@ -200,6 +205,83 @@ int listPlugins() {
     return 0;
 }
 
+int modelCommands(int argc, char* argv[]) {
+    if (argc < 3) {
+        std::cerr << "Usage: ctic models <subcommand>" << std::endl;
+        return 1;
+    }
+    
+    std::string subcommand = argv[2];
+    ModelManager manager("models/");
+    
+    if (subcommand == "list") {
+        std::cout << "Available Models:" << std::endl;
+        std::cout << "=================" << std::endl;
+        std::cout << std::endl;
+        
+        for (const auto& model_id : manager.getAvailableModels()) {
+            auto info = manager.getModelInfo(model_id);
+            std::cout << "  " << model_id;
+            if (!info.name.empty()) {
+                std::cout << " - " << info.name;
+            }
+            if (!info.description.empty()) {
+                std::cout << std::endl << "    " << info.description;
+            }
+            std::cout << std::endl;
+        }
+        
+        if (manager.getAvailableModels().empty()) {
+            std::cout << "No models found in models/ directory" << std::endl;
+            std::cout << std::endl;
+            std::cout << "Download models using:" << std::endl;
+            std::cout << "  ./scripts/download_model.sh <model-name>" << std::endl;
+        }
+        
+    } else if (subcommand == "info" && argc >= 4) {
+        std::string model_id = argv[3];
+        
+        if (!manager.hasModel(model_id)) {
+            std::cerr << "Model not found: " << model_id << std::endl;
+            return 1;
+        }
+        
+        auto* config = manager.loadModel(model_id);
+        if (config) {
+            std::cout << config->getSummary() << std::endl;
+        }
+        
+    } else if (subcommand == "test" && argc >= 4) {
+        std::string model_id = argv[3];
+        std::string sample_text = "This is amazing!";  // Default
+        
+        // Parse additional arguments
+        for (int i = 4; i < argc; i++) {
+            if (std::string(argv[i]) == "--text" && i + 1 < argc) {
+                sample_text = argv[++i];
+            }
+        }
+        
+        std::cout << manager.testModel(model_id, sample_text) << std::endl;
+        
+    } else if (subcommand == "validate" && argc >= 4) {
+        std::string model_id = argv[3];
+        
+        if (manager.validateModel(model_id)) {
+            std::cout << "✓ Model " << model_id << " is valid" << std::endl;
+        } else {
+            std::cout << "✗ Model " << model_id << " validation failed" << std::endl;
+            return 1;
+        }
+        
+    } else {
+        std::cerr << "Unknown models subcommand: " << subcommand << std::endl;
+        return 1;
+    }
+    
+    return 0;
+}
+
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         printUsage();
@@ -234,6 +316,8 @@ int main(int argc, char* argv[]) {
         if (subcommand == "list") {
             return listPlugins();
         }
+    } else if (command == "models") {
+        return modelCommands(argc, argv);
     } else if (command == "help" || command == "--help") {
         printUsage();
         return 0;

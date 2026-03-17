@@ -7,7 +7,9 @@ LDFLAGS = -ldl -pthread
 TARGET = ctic
 
 # Source files for pipeline engine
-SOURCES = src/main_pipeline.cpp
+SOURCES = src/main_pipeline.cpp \
+          src/models/model_config.cpp \
+          src/models/model_manager.cpp
 
 # Build directories
 BUILDDIR = build
