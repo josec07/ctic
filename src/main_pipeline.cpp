@@ -142,6 +142,15 @@ int runPipeline(int argc, char* argv[]) {
     }
     
     // Create registry and load plugins
+
+    /*
+   Jose - we are calling a noderegistry class @ "include/pipeline/registry.h"
+   
+   to register plugin nodes we want to make sure we use our class in registry.h
+    
+   
+   */ 
+
     NodeRegistry registry;
     
     // Load plugins from all directories
@@ -188,6 +197,7 @@ int listPlugins() {
     registry.loadPluginsFromDirectory("plugins/detectors");
     registry.loadPluginsFromDirectory("plugins/outputs");
     registry.loadPluginsFromDirectory("plugins/models");
+    registry.loadPluginsFromDirectory("plugins/inputs")
     
     std::cout << "Available Node Types:" << std::endl;
     std::cout << std::endl;

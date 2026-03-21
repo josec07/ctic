@@ -1,0 +1,69 @@
+{
+  "name": "VOD Chat Analysis Pipeline",
+  "description": "Analyzes Twitch VOD chat to detect clip-worthy moments",
+  "version": "1.0.0",
+  
+  "nodes": [
+    {
+      "id": "chat_input",
+      "type": "chat_replay",
+      "plugin": "inputs/chat_replay.so",
+      "config": {
+        "file_path": "data/vods/2722559424.json",
+        "batch_size": 5,
+        "loop": false
+      }
+    },
+    {
+      "id": "tokenizer",
+      "type": "tokenizer",
+      "plugin": "preprocessing/tokenizer.so",
+      "config": {
+        "lowercase": true,
+        "remove_punctuation": false,
+        "min_length": 2
+      }
+    },
+    {
+      "id": "spike_detector",
+      "type": "spike_detector",
+      "plugin": "detectors/spike_detector.so",
+      "config": {
+        "window_size": 10,
+        "spike_threshold": 2.0,
+        "min_messages": 3
+      }
+    },
+    {
+      "id": "csv_output",
+      "type": "comprehensive_csv",
+      "plugin": "outputs/comprehensive_csv.so",
+      "config": {
+        "output_file": "output/vod_detections.csv",
+        "include_lineage": true,
+        "include_metadata": true
+      }
+    }
+  ],
+  
+  "connections": [
+    {
+      "from": "chat_input",
+      "to": "tokenizer"
+    },
+    {
+      "from": "tokenizer",
+      "to": "spike_detector"
+    },
+    {
+      "from": "spike_detector",
+      "to": "csv_output"
+    }
+  ],
+  
+  "execution": {
+    "mode": "sequential",
+    "max_iterations": 100,
+    "stop_on_error": false
+  }
+}

@@ -1,5 +1,5 @@
 # Master Makefile for all plugins
-SUBDIRS = preprocessing detectors outputs
+SUBDIRS = inputs preprocessing detectors outputs
 
 .PHONY: all clean $(SUBDIRS)
 

@@ -45,6 +45,11 @@ private:
     std::map<std::string, std::string> node_to_plugin;
     
 public:
+
+    /*
+    Jose - This is where I am defining a default node registry,
+     all private/public class memebers get default initialized. 
+    */
     NodeRegistry() = default;
     
     // Register built-in node type
