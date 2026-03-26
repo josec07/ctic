@@ -1,0 +1,44 @@
+{
+  "template_version": "1.0",
+  "name": "Sentiment Analysis Pipeline",
+  "description": "Analyze chat sentiment using ONNX ML model",
+  "author": "CTIC",
+  "variables": {
+    "VOD_ID": "${VOD_ID:2722559424}",
+    "CHANNEL": "${CHANNEL:test_streamer}",
+    "OUTPUT_PATH": "${OUTPUT_PATH:outputs/${CHANNEL}/${DATE}_sentiment.csv}"
+  },
+  "pipeline": {
+    "nodes": [
+      {
+        "id": "input",
+        "type": "chat_replay",
+        "config": {
+          "file_path": "data/vods/${VOD_ID}.json",
+          "batch_size": 10,
+          "time_scale": 1.0
+        }
+      },
+      {
+        "id": "sentiment",
+        "type": "onnx_inference",
+        "inputs": ["input"],
+        "config": {
+          "model_dir": "models/sentiment-twitter",
+          "device": "auto"
+        }
+      },
+      {
+        "id": "output",
+        "type": "comprehensive_csv",
+        "inputs": ["sentiment"],
+        "config": {
+          "path": "${OUTPUT_PATH}",
+          "include_lineage": true,
+          "include_all_scores": true,
+          "include_raw_text": false
+        }
+      }
+    ]
+  }
+}
