@@ -1,0 +1,73 @@
+{
+  "version": "3.0",
+  "name": "example_chat_processor",
+  "description": "Example pipeline for processing chat messages",
+  "pipeline": {
+    "nodes": [
+      {
+        "id": "input",
+        "type": "stream_input",
+        "config": {
+          "source": "twitch_irc",
+          "channel": "${CHANNEL_NAME}"
+        }
+      },
+      {
+        "id": "normalizer",
+        "type": "text_normalizer",
+        "inputs": ["input"],
+        "config": {
+          "lowercase": true,
+          "remove_punctuation": false,
+          "trim_spaces": true
+        }
+      },
+      {
+        "id": "spike_detector",
+        "type": "spike_detector",
+        "inputs": ["normalizer"],
+        "parallel": true,
+        "config": {
+          "window_size": 60,
+          "threshold": 3.0
+        }
+      },
+      {
+        "id": "pattern_matcher",
+        "type": "pattern_matcher",
+        "inputs": ["normalizer"],
+        "parallel": true,
+        "config": {
+          "patterns": ["pog", "omg", "wow", "insane"],
+          "similarity_threshold": 0.8
+        }
+      },
+      {
+        "id": "aggregator",
+        "type": "decision_aggregator",
+        "inputs": ["spike_detector", "pattern_matcher"],
+        "config": {
+          "strategy": "any",
+          "min_confidence": 0.5
+        }
+      },
+      {
+        "id": "output",
+        "type": "csv_writer",
+        "inputs": ["aggregator"],
+        "config": {
+          "path": "outputs/${CHANNEL_NAME}/${DATE}.csv",
+          "format": "csv"
+        }
+      }
+    ],
+    "connections": [
+      {"from": "input", "to": "normalizer"},
+      {"from": "normalizer", "to": "spike_detector"},
+      {"from": "normalizer", "to": "pattern_matcher"},
+      {"from": "spike_detector", "to": "aggregator"},
+      {"from": "pattern_matcher", "to": "aggregator"},
+      {"from": "aggregator", "to": "output"}
+    ]
+  }
+}

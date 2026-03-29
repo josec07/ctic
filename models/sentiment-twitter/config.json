@@ -1,0 +1,53 @@
+{
+  "model_info": {
+    "name": "Twitter RoBERTa Sentiment",
+    "version": "1.0.0",
+    "description": "Sentiment analysis model fine-tuned on Twitter data for social media text",
+    "author": "cardiffnlp",
+    "source": "https://huggingface.co/cardiffnlp/twitter-roberta-base-sentiment",
+    "license": "MIT"
+  },
+  
+  "preprocessing": {
+    "tokenizer": "roberta-base",
+    "max_length": 128,
+    "lowercase": false,
+    "remove_urls": true,
+    "expand_emotes": true,
+    "padding": "max_length",
+    "truncation": "longest_first"
+  },
+  
+  "inference": {
+    "input_names": ["input_ids", "attention_mask"],
+    "output_names": ["logits"],
+    "input_shape": [1, 128],
+    "batch_size": 1,
+    "providers": ["CPUExecutionProvider"],
+    "intra_threads": 1,
+    "inter_threads": 1,
+    "optimization_level": "all"
+  },
+  
+  "postprocessing": {
+    "type": "classification",
+    "activation": "softmax",
+    "labels": ["negative", "neutral", "positive"],
+    "threshold": 0.7,
+    "top_k": 1
+  },
+  
+  "clip_detection": {
+    "trigger_on": ["positive", "negative"],
+    "min_confidence": 0.85,
+    "description_template": "Strong {label} sentiment detected ({confidence}%)",
+    "combine_with_spike": false
+  },
+  
+  "performance": {
+    "avg_inference_ms": 15,
+    "memory_mb": 125,
+    "throughput_msgs_sec": 500,
+    "quantization": "none"
+  }
+}

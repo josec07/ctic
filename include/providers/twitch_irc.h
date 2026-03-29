@@ -1,45 +1,33 @@
-#pragma once
+#ifndef TWEETHC_IRC_H
+#define TWEETHC_IRC_H
 
+#include "network/irc_connection.h"
 #include <string>
-#include <cstring>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <unistd.h>
-#include <iostream>
-#include <chrono>
-#include <cstdlib>
+#include <sstream>
+#include <algorithm>
 
 namespace ctic {
 namespace providers {
 
 class TwitchIRC {
-private:
-    int sockfd_ = -1;
-    std::string channel_;
-    std::string buffer_;
-    int message_count_ = 0;
-    bool connected_ = false;
-    
-    void send_raw(const std::string& msg);
-    std::string receive_line();
-    
 public:
-    TwitchIRC() = default;
-    ~TwitchIRC() { disconnect(); }
-    
-    bool connect(const std::string& channel);
-    std::string read_line();
+    TwitchIRC(const std::string& host, int port, const std::string& password, const std::string& channel);
+    void run();
+    bool connect();
+    std::string readLine();
+    std::string extract_twitch_channel_from_url(const std::string& url);
     bool parse_message(const std::string& raw, std::string& username, std::string& content);
-    
-    bool is_connected() const { return connected_; }
-    int message_count() const { return message_count_; }
-    const std::string& channel() const { return channel_; }
-    
     void disconnect();
-    bool test_connection(const std::string& channel, int timeout_seconds = 30);
+    bool test_connection(const std::string& channel, int timeout_seconds);
+
+private:
+    ctic::network::IrcConnection irc_connection_;
+    std::string password_;
+    std::string channel_;
+    bool connected_;
+    int message_count_;
 };
 
 }
 }
+#endif

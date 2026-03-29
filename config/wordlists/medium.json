@@ -1,0 +1,18 @@
+{
+  "version": "1.0",
+  "tier": "medium",
+  "description": "Medium-intensity reactions - solid plays, good moments, general hype",
+  "words": [
+    "W", "GG", "GGS", "EZ", "NICE", "SHEESH", "DAMN", "OH", "YT", "PEPE",
+    "MONKA", "KEKW", "BASED", "TRUE", "REAL", "MOGGED", "OWNED", "SAUCE",
+    "CLEAN", "NASTY", "P", "VP", "POGU", "POGGIES", "KEKL", "KEKWAIT",
+    "MONKAGUN", "PEPELA", "FEELSMAN", "SAVAGE", "HEAT", "ON FIRE", "COOKING",
+    "LETHAL", "DEADLY", "VICIOUS", "CRUEL", "UNFAIR", "UNMATCHED", "INHUMAN"
+  ],
+  "metadata": {
+    "case_sensitive": false,
+    "collapse_repeated_chars": true,
+    "category": "positive",
+    "intensity": 3
+  }
+}

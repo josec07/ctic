@@ -1,0 +1,18 @@
+{
+  "version": "1.0",
+  "tier": "easy",
+  "description": "Low-intensity reactions - casual engagement, filler moments, background chat",
+  "words": [
+    "lol", "wow", "true", "real", "?", "??", "xd", "lmao", "ok", "sure",
+    "yeah", "no", "yes", "ok", "hmm", "oof", "rip", "loll", "lool", "lmaoo",
+    "bruh", "bro", "man", "dude", "fr", "for real", "actually", "literally",
+    "honestly", "probably", "maybe", "fr fr", "no cap", "no cap fr", "bet",
+    "say less", "facts", "fax", "printer", "slaps", "hard", "valid", "fair"
+  ],
+  "metadata": {
+    "case_sensitive": false,
+    "collapse_repeated_chars": false,
+    "category": "neutral",
+    "intensity": 1
+  }
+}

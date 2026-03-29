@@ -11,6 +11,9 @@
 namespace ctic {
 namespace core {
 
+
+using json = nlohmann::json;
+
 ConfigManager::ConfigManager() {
     ctic_dir_ = ".ctic";
 }
@@ -37,58 +40,30 @@ CreatorConfig ConfigManager::load_creator(const std::string& name) {
         return config;
     }
     
-    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    file.close();
-    
-    auto parse_string = [&](const std::string& key) -> std::string {
-        size_t pos = content.find("\"" + key + "\"");
-        if (pos == std::string::npos) return "";
-        size_t start = content.find("\"", pos + key.length() + 3);
-        if (start == std::string::npos) return "";
-        size_t end = content.find("\"", start + 1);
-        return content.substr(start + 1, end - start - 1);
-    };
-    
-    auto parse_int = [&](const std::string& key, int default_val) -> int {
-        size_t pos = content.find("\"" + key + "\"");
-        if (pos == std::string::npos) return default_val;
-        size_t num_start = content.find_first_of("0123456789", pos);
-        if (num_start == std::string::npos) return default_val;
-        try {
-            return std::stoi(content.substr(num_start));
-        } catch (...) {
-            return default_val;
-        }
-    };
-    
-    config.name = name;
-    config.channel = parse_string("channel");
-    config.twitch_url = parse_string("twitch_url");
-    config.profile = parse_string("profile");
-    if (config.profile.empty()) config.profile = "balanced";
-    config.detector_config_id = parse_string("detector_config");
-    config.created_at = parse_string("created_at");
-    config.last_monitored = parse_string("last_monitored");
-    config.total_sessions = parse_int("total_sessions", 0);
-    config.total_clips_detected = parse_int("total_clips_detected", 0);
-    
-    size_t tiers_pos = content.find("\"enabled_tiers\"");
-    if (tiers_pos != std::string::npos) {
-        size_t array_start = content.find("[", tiers_pos);
-        size_t array_end = content.find("]", array_start);
-        if (array_start != std::string::npos && array_end != std::string::npos) {
-            std::string array_content = content.substr(array_start, array_end - array_start + 1);
-            size_t pos = 0;
-            while ((pos = array_content.find("\"", pos)) != std::string::npos) {
-                size_t end = array_content.find("\"", pos + 1);
-                if (end != std::string::npos) {
-                    config.enabled_tiers.push_back(array_content.substr(pos + 1, end - pos - 1));
-                    pos = end + 1;
-                } else {
-                    break;
+    try {
+        json j;
+        file >> j;
+        file.close();
+        
+        config.name = name;
+        config.channel = j.value("channel", "");
+        config.twitch_url = j.value("twitch_url", "");
+        config.profile = j.value("profile", "balanced");
+        config.detector_config_id = j.value("detector_config", "");
+        config.created_at = j.value("created_at", "");
+        config.last_monitored = j.value("last_monitored", "");
+        config.total_sessions = j.value("total_sessions", 0);
+        config.total_clips_detected = j.value("total_clips_detected", 0);
+        
+        if (j.contains("enabled_tiers") && j["enabled_tiers"].is_array()) {
+            for (const auto& tier : j["enabled_tiers"]) {
+                if (tier.is_string()) {
+                    config.enabled_tiers.push_back(tier.get<std::string>());
                 }
             }
         }
+    } catch (const std::exception& e) {
+        std::cerr << "Error parsing creator config for " << name << ": " << e.what() << std::endl;
     }
     
     return config;
@@ -104,26 +79,26 @@ bool ConfigManager::save_creator(const CreatorConfig& config) {
         return false;
     }
     
-    file << "{\n";
-    file << "  \"name\": \"" << config.name << "\",\n";
-    file << "  \"channel\": \"" << config.channel << "\",\n";
-    file << "  \"twitch_url\": \"" << config.twitch_url << "\",\n";
-    file << "  \"profile\": \"" << config.profile << "\",\n";
-    file << "  \"enabled_tiers\": [";
-    for (size_t i = 0; i < config.enabled_tiers.size(); ++i) {
-        file << "\"" << config.enabled_tiers[i] << "\"";
-        if (i < config.enabled_tiers.size() - 1) file << ", ";
+    try {
+        json j;
+        j["name"] = config.name;
+        j["channel"] = config.channel;
+        j["twitch_url"] = config.twitch_url;
+        j["profile"] = config.profile;
+        j["enabled_tiers"] = config.enabled_tiers;
+        j["detector_config"] = config.detector_config_id;
+        j["created_at"] = config.created_at;
+        j["last_monitored"] = config.last_monitored;
+        j["total_sessions"] = config.total_sessions;
+        j["total_clips_detected"] = config.total_clips_detected;
+        
+        file << j.dump(2);
+        file.close();
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "Error saving creator config: " << e.what() << std::endl;
+        return false;
     }
-    file << "],\n";
-    file << "  \"detector_config\": \"" << config.detector_config_id << "\",\n";
-    file << "  \"created_at\": \"" << config.created_at << "\",\n";
-    file << "  \"last_monitored\": \"" << config.last_monitored << "\",\n";
-    file << "  \"total_sessions\": " << config.total_sessions << ",\n";
-    file << "  \"total_clips_detected\": " << config.total_clips_detected << "\n";
-    file << "}\n";
-    
-    file.close();
-    return true;
 }
 
 bool ConfigManager::remove_creator(const std::string& name) {
@@ -163,15 +138,29 @@ std::string ConfigManager::get_output_dir(const std::string& creator, const std:
     return ctic_dir_ + "/outputs/" + creator + "/" + tier;
 }
 
-TierConfig ConfigManager::load_tier_config(const std::string& tier_name) {
-    TierConfig config;
-    config.tier_name = tier_name;
-    config.window_seconds = 30;
-    config.levenshtein_threshold = 0.8;
-    config.use_levenshtein = true;
+json ConfigManager::load_wordlist(const std::string& tier_name) {
+    // Try to load from external JSON first
+    std::string wordlist_path = "config/wordlists/" + tier_name + ".json";
+    std::ifstream file(wordlist_path);
+    
+    if (file.is_open()) {
+        try {
+            json j;
+            file >> j;
+            file.close();
+            return j;
+        } catch (const std::exception& e) {
+            std::cerr << "Error loading wordlist from " << wordlist_path << ": " << e.what() << std::endl;
+        }
+    }
+    
+    // Fallback to built-in word lists (embedded for backward compatibility)
+    json fallback;
+    fallback["tier"] = tier_name;
+    fallback["version"] = "1.0";
     
     if (tier_name == "high") {
-        config.words = {
+        fallback["words"] = {
             "POG", "POGGERS", "POGCHAMP", "INSANE", "LETS GO", "CLUTCH", "ACE", "PENTA",
             "CRACKED", "GOATED", "DIFF", "FINAL", "K", "GOD", "CRITICAL", "MONSTER",
             "LEGENDARY", "NUTS", "WTF", "OMFG", "SHEESH", "DAMN", "WHOA", "NO WAY",
@@ -179,12 +168,9 @@ TierConfig ConfigManager::load_tier_config(const std::string& tier_name) {
             "WORLD RECORD", "HES HIM", "DIFFERENT BREED", "ABSOLUTE UNIT", "CINEMATIC",
             "MOVIE", "THEATRE", "MAIN CHARACTER", "PROTAGONIST", "HIM", "HERO", "GOATED"
         };
-        config.burst_threshold = 3;
-        config.min_word_length = 3;
-        config.cooldown_seconds = 60;
-        config.require_unique_users = 2;
-    } else if (tier_name == "high-negative") {
-        config.words = {
+        fallback["metadata"] = {{"intensity", 5}, {"category", "positive"}};
+    } else if (tier_name == "high_negative" || tier_name == "high-negative") {
+        fallback["words"] = {
             "L", "LMAO", "LFMAO", "RIP", "F", "F IN CHAT", "LOST", "BOT", "DOG",
             "TRASH", "CRINGE", "OMEGALUL", "HUHH", "AIM ASSIST", "WORST", "FAILED",
             "CHOKE", "BRUH", "NOT LIKE THIS", "NOT THE WAY", "NOOO", "YIKES",
@@ -192,30 +178,88 @@ TierConfig ConfigManager::load_tier_config(const std::string& tier_name) {
             "LITERALLY UNPLAYABLE", "WHAT WAS THAT", "INTING", "THROWING", "GRIEFING",
             "NPC", "HARDSTUCK", "BOOSTED", "CARRIED", "BAD", "TERRIBLE", "HORRIBLE"
         };
-        config.burst_threshold = 5;
-        config.min_word_length = 1;
-        config.cooldown_seconds = 45;
-        config.require_unique_users = 3;
+        fallback["metadata"] = {{"intensity", 5}, {"category", "negative"}};
     } else if (tier_name == "medium") {
-        config.words = {
+        fallback["words"] = {
             "W", "GG", "GGS", "EZ", "NICE", "SHEESH", "DAMN", "OH", "YT", "PEPE",
             "MONKA", "KEKW", "BASED", "TRUE", "REAL", "MOGGED", "OWNED", "SAUCE",
             "CLEAN", "NASTY", "P", "VP", "POGU", "POGGIES", "KEKL", "KEKWAIT",
             "MONKAGUN", "PEPELA", "FEELSMAN", "SAVAGE", "HEAT", "ON FIRE", "COOKING",
             "LETHAL", "DEADLY", "VICIOUS", "CRUEL", "UNFAIR", "UNMATCHED", "INHUMAN"
         };
-        config.burst_threshold = 8;
-        config.min_word_length = 1;
-        config.cooldown_seconds = 90;
-        config.require_unique_users = 4;
+        fallback["metadata"] = {{"intensity", 3}, {"category", "positive"}};
     } else if (tier_name == "easy") {
-        config.words = {
+        fallback["words"] = {
             "lol", "wow", "true", "real", "?", "??", "xd", "lmao", "ok", "sure",
             "yeah", "no", "yes", "ok", "hmm", "oof", "rip", "loll", "lool", "lmaoo",
             "bruh", "bro", "man", "dude", "fr", "for real", "actually", "literally",
             "honestly", "probably", "maybe", "fr fr", "no cap", "no cap fr", "bet",
             "say less", "facts", "fax", "printer", "slaps", "hard", "valid", "fair"
         };
+        fallback["metadata"] = {{"intensity", 1}, {"category", "neutral"}};
+    }
+    
+    return fallback;
+}
+
+TierConfig ConfigManager::load_tier_config(const std::string& tier_name) {
+    TierConfig config;
+    config.tier_name = tier_name;
+    
+    // Load word list from JSON
+    json wordlist = load_wordlist(tier_name);
+    
+    if (wordlist.contains("words") && wordlist["words"].is_array()) {
+        for (const auto& word : wordlist["words"]) {
+            if (word.is_string()) {
+                config.words.push_back(word.get<std::string>());
+            }
+        }
+    }
+    
+    // Load tier-specific thresholds from engine config
+    std::string engine_path = "config/engine.json";
+    std::ifstream engine_file(engine_path);
+    if (engine_file.is_open()) {
+        try {
+            json engine;
+            engine_file >> engine;
+            engine_file.close();
+            
+            if (engine.contains("tier_configs") && engine["tier_configs"].contains(tier_name)) {
+                json tier_config = engine["tier_configs"][tier_name];
+                config.burst_threshold = tier_config.value("burst_threshold", 3);
+                config.cooldown_seconds = tier_config.value("cooldown_seconds", 60);
+                config.require_unique_users = tier_config.value("require_unique_users", 2);
+                config.min_word_length = tier_config.value("min_word_length", 3);
+                config.window_seconds = tier_config.value("window_seconds", 30);
+                config.levenshtein_threshold = tier_config.value("levenshtein_threshold", 0.8);
+                config.use_levenshtein = tier_config.value("use_levenshtein", true);
+                
+                return config;
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Error loading engine config: " << e.what() << std::endl;
+        }
+    }
+    
+    // Default thresholds if engine.json not found
+    if (tier_name == "high") {
+        config.burst_threshold = 3;
+        config.min_word_length = 3;
+        config.cooldown_seconds = 60;
+        config.require_unique_users = 2;
+    } else if (tier_name == "high_negative" || tier_name == "high-negative") {
+        config.burst_threshold = 5;
+        config.min_word_length = 1;
+        config.cooldown_seconds = 45;
+        config.require_unique_users = 3;
+    } else if (tier_name == "medium") {
+        config.burst_threshold = 8;
+        config.min_word_length = 1;
+        config.cooldown_seconds = 90;
+        config.require_unique_users = 4;
+    } else if (tier_name == "easy") {
         config.burst_threshold = 15;
         config.min_word_length = 2;
         config.cooldown_seconds = 120;
@@ -234,38 +278,30 @@ TierConfig ConfigManager::load_profile_tier(const std::string& profile_name, con
         return base_config;
     }
     
-    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    file.close();
-    
-    size_t tier_pos = content.find("\"" + tier_name + "\"");
-    if (tier_pos == std::string::npos) {
-        return base_config;
-    }
-    
-    size_t block_start = content.find("{", tier_pos);
-    size_t block_end = content.find("}", block_start);
-    if (block_start == std::string::npos || block_end == std::string::npos) {
-        return base_config;
-    }
-    
-    std::string block = content.substr(block_start, block_end - block_start + 1);
-    
-    auto parse_int_override = [&block](const std::string& key, int default_val) -> int {
-        size_t pos = block.find("\"" + key + "\"");
-        if (pos == std::string::npos) return default_val;
-        size_t num_start = block.find_first_of("0123456789", pos);
-        if (num_start == std::string::npos) return default_val;
-        try {
-            return std::stoi(block.substr(num_start));
-        } catch (...) {
-            return default_val;
+    try {
+        json profile;
+        file >> profile;
+        file.close();
+        
+        if (profile.contains("tiers") && profile["tiers"].contains(tier_name)) {
+            json tier_override = profile["tiers"][tier_name];
+            
+            if (tier_override.contains("burst_threshold")) {
+                base_config.burst_threshold = tier_override["burst_threshold"];
+            }
+            if (tier_override.contains("min_word_length")) {
+                base_config.min_word_length = tier_override["min_word_length"];
+            }
+            if (tier_override.contains("cooldown_seconds")) {
+                base_config.cooldown_seconds = tier_override["cooldown_seconds"];
+            }
+            if (tier_override.contains("require_unique_users")) {
+                base_config.require_unique_users = tier_override["require_unique_users"];
+            }
         }
-    };
-    
-    base_config.burst_threshold = parse_int_override("burst_threshold", base_config.burst_threshold);
-    base_config.min_word_length = parse_int_override("min_word_length", base_config.min_word_length);
-    base_config.cooldown_seconds = parse_int_override("cooldown_seconds", base_config.cooldown_seconds);
-    base_config.require_unique_users = parse_int_override("require_unique_users", base_config.require_unique_users);
+    } catch (const std::exception& e) {
+        std::cerr << "Error loading profile tier: " << e.what() << std::endl;
+    }
     
     return base_config;
 }
@@ -273,10 +309,44 @@ TierConfig ConfigManager::load_profile_tier(const std::string& profile_name, con
 DetectorConfig ConfigManager::load_detector_config(const std::string& detector_id) {
     DetectorConfig config;
     config.id = detector_id;
-    config.name = "Default Levenshtein Burst";
-    config.algorithm = "levenshtein";
-    config.similarity_threshold = 0.8;
     
+    // Try to load from engine.json
+    std::string engine_path = "config/engine.json";
+    std::ifstream engine_file(engine_path);
+    
+    if (engine_file.is_open()) {
+        try {
+            json engine;
+            engine_file >> engine;
+            engine_file.close();
+            
+            if (engine.contains("detectors") && engine["detectors"].is_array()) {
+                for (const auto& det : engine["detectors"]) {
+                    if (det.value("id", "") == detector_id) {
+                        config.name = det.value("name", detector_id);
+                        config.algorithm = det.value("type", "fuzzy_match");
+                        
+                        if (det.contains("config")) {
+                            json det_config = det["config"];
+                            config.similarity_threshold = det_config.value("similarity_threshold", 0.8);
+                        }
+                        break;
+                    }
+                }
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Error loading detector config: " << e.what() << std::endl;
+        }
+    }
+    
+    // Default detector configuration
+    if (config.name.empty()) {
+        config.name = "Default Levenshtein Burst";
+        config.algorithm = "fuzzy_match";
+        config.similarity_threshold = 0.8;
+    }
+    
+    // Load all tier configurations
     config.tiers = {
         load_tier_config("high"),
         load_tier_config("high-negative"),

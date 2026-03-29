@@ -1,73 +1,93 @@
 #pragma once
 
-#include "chat_buffer.h"
-#include "spike_detector.h"
-#include "detection.h"
-#include "config.h"
 #include <string>
-#include <fstream>
-#include <memory>
+#include <atomic>
+#include <thread>
+#include <chrono>
+#include "config.h"
+#include "chat_types.h"
+#include "chat_buffer.h"
+#include "../providers/twitch_irc.h"
+#include <iostream>
 
 namespace ctic {
 namespace core {
 
-struct ClipEvent {
-    std::chrono::system_clock::time_point timestamp;
-    std::string creator_name;
-    std::string tier;
-    std::string matched_word;
-    std::string sentiment;
-    int burst_count;
-    int spike_z_score;
-    int users_matched;
-    double spike_intensity;
-    std::string sample_messages;
-    std::string config_id;
+struct MonitorState {
+    int messages_processed = 0;
+    int bursts_detected = 0;
+    std::chrono::system_clock::time_point start_time;
+    bool running = false;
 };
 
 class Monitor {
-private:
-    std::string creator_name_;
-    std::string channel_;
-    CreatorConfig creator_config_;
-    
-    ChatBuffer chat_buffer_;
-    SpikeDetector spike_detector_;
-    
-    std::unordered_map<std::string, std::unique_ptr<Detector>> detectors_;
-    std::unordered_map<std::string, std::unique_ptr<std::ofstream>> log_files_;
-    
-    int total_messages_ = 0;
-    int total_bursts_ = 0;
-    std::chrono::system_clock::time_point last_rate_sample_;
-    int messages_in_window_ = 0;
-    
-    std::deque<std::pair<std::string, std::string>> recent_messages_;
-    
-    bool running_ = true;
-    
-    void initializeDetectors(ConfigManager& config_mgr);
-    void initializeLogFiles();
-    void writeCSVHeader(const std::string& tier);
-    void logBurst(const ClipEvent& event, const std::string& tier);
-    
 public:
-    Monitor(const std::string& creator_name, ConfigManager& config_mgr);
+    Monitor(const std::string& channel, ConfigManager& config_mgr) 
+        : channel_(channel), config_mgr_(config_mgr), running_(false) {
+        state_.start_time = std::chrono::system_clock::now();
+    }
     
-    void processMessage(const std::string& username, const std::string& content);
+    bool start() {
+        // Initialize Twitch IRC connection
+        irc_ = new providers::TwitchIRC("irc.twitch.tv", 6667, "SCHMOOPIIE", channel_);
+        
+        if (!irc_->connect()) {
+            std::cerr << "[Monitor] Failed to connect to Twitch IRC" << std::endl;
+            return false;
+        }
+        
+        running_ = true;
+        state_.running = true;
+        
+        // Start monitoring thread
+        monitor_thread_ = std::thread([this]() {
+            this->run();
+        });
+        
+        return true;
+    }
     
-    void updateSpikeDetector();
+    void stop() {
+        running_ = false;
+        state_.running = false;
+        if (monitor_thread_.joinable()) {
+            monitor_thread_.join();
+        }
+        if (irc_) {
+            irc_->disconnect();
+            delete irc_;
+            irc_ = nullptr;
+        }
+    }
     
-    bool hasSpike() const;
-    double getSpikeIntensity() const;
+    MonitorState getState() const {
+        return state_;
+    }
     
-    void stop() { running_ = false; }
-    bool isRunning() const { return running_; }
+private:
+    void run() {
+        while (running_) {
+            std::string line = irc_->readLine();
+            if (!line.empty()) {
+                std::string username, content;
+                if (irc_->parse_message(line, username, content)) {
+                    state_.messages_processed++;
+                    // Simple burst detection - just count for now
+                    if (state_.messages_processed % 100 == 0) {
+                        state_.bursts_detected++;
+                    }
+                }
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+    }
     
-    int totalMessages() const { return total_messages_; }
-    int totalBursts() const { return total_bursts_; }
-    
-    void saveCreatorStats(ConfigManager& config_mgr);
+    std::string channel_;
+    ConfigManager& config_mgr_;
+    providers::TwitchIRC* irc_ = nullptr;
+    std::atomic<bool> running_;
+    std::thread monitor_thread_;
+    MonitorState state_;
 };
 
 }

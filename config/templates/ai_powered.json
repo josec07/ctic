@@ -1,0 +1,101 @@
+{
+  "template_version": "1.0",
+  "name": "AI-Powered Clip Detection",
+  "description": "Uses ML models for intelligent clip detection with sentiment and spike analysis",
+  "author": "CTIC",
+  "requirements": {
+    "plugins": ["tokenizer", "spike_detector", "aggregator", "comprehensive_csv"],
+    "models": ["sentiment-twitter"],
+    "min_version": "3.0"
+  },
+  "variables": {
+    "CHANNEL": "${CHANNEL}",
+    "MODEL_DIR": "${MODEL_DIR:models/sentiment-twitter}",
+    "SPIKE_THRESHOLD": "${SPIKE_THRESHOLD:3.0}",
+    "SENTIMENT_THRESHOLD": "${SENTIMENT_THRESHOLD:0.85}",
+    "OUTPUT_PATH": "${OUTPUT_PATH:outputs/${CHANNEL}/${DATE}_ai_clips.csv}"
+  },
+  "pipeline": {
+    "nodes": [
+      {
+        "id": "input",
+        "type": "stream_input",
+        "config": {
+          "source": "twitch_irc",
+          "channel": "${CHANNEL}"
+        }
+      },
+      {
+        "id": "normalizer",
+        "type": "text_normalizer",
+        "inputs": ["input"],
+        "config": {
+          "lowercase": false,
+          "trim_spaces": true,
+          "expand_contractions": true
+        }
+      },
+      {
+        "id": "tokenizer",
+        "type": "tokenizer",
+        "inputs": ["normalizer"],
+        "config": {
+          "method": "bert",
+          "max_length": 128
+        }
+      },
+      {
+        "id": "spike_detector",
+        "type": "spike_detector",
+        "inputs": ["normalizer"],
+        "parallel": true,
+        "config": {
+          "window_size": 60,
+          "threshold": "${SPIKE_THRESHOLD}"
+        }
+      },
+      {
+        "id": "sentiment_model",
+        "type": "onnx_model",
+        "inputs": ["tokenizer"],
+        "parallel": true,
+        "config": {
+          "model_dir": "${MODEL_DIR}",
+          "trigger_threshold": "${SENTIMENT_THRESHOLD}"
+        }
+      },
+      {
+        "id": "aggregator",
+        "type": "aggregator",
+        "inputs": ["spike_detector", "sentiment_model"],
+        "config": {
+          "strategy": "weighted",
+          "weights": {
+            "spike_detector": 0.4,
+            "sentiment_model": 0.6
+          },
+          "threshold": 0.65,
+          "min_signals": 1,
+          "generate_reason": true
+        }
+      },
+      {
+        "id": "csv_output",
+        "type": "comprehensive_csv",
+        "inputs": ["aggregator"],
+        "config": {
+          "path": "${OUTPUT_PATH}",
+          "include_lineage": true,
+          "include_all_scores": true,
+          "include_raw_text": true,
+          "include_metadata": true
+        }
+      }
+    ]
+  },
+  "notes": {
+    "usage": "This template combines ML-based sentiment analysis with statistical spike detection",
+    "performance": "Requires ~150MB memory for model, processes ~500 msgs/sec",
+    "customization": "Adjust thresholds based on streamer's chat activity level"
+  }
+}

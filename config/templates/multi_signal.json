@@ -1,0 +1,97 @@
+{
+  "template_version": "1.0",
+  "name": "Multi-Signal Detector",
+  "description": "Combines spike detection with pattern matching for comprehensive clip detection",
+  "author": "CTIC",
+  "requirements": {
+    "plugins": ["spike_detector", "text_normalizer", "aggregator", "comprehensive_csv"],
+    "min_version": "3.0"
+  },
+  "variables": {
+    "CHANNEL": "${CHANNEL}",
+    "SPIKE_THRESHOLD": "${SPIKE_THRESHOLD:3.0}",
+    "AGGREGATION_STRATEGY": "${AGGREGATION_STRATEGY:weighted}",
+    "DETECTION_THRESHOLD": "${DETECTION_THRESHOLD:0.6}",
+    "OUTPUT_PATH": "${OUTPUT_PATH:outputs/${CHANNEL}/${DATE}_clips.csv}"
+  },
+  "pipeline": {
+    "nodes": [
+      {
+        "id": "input",
+        "type": "stream_input",
+        "config": {
+          "source": "twitch_irc",
+          "channel": "${CHANNEL}"
+        }
+      },
+      {
+        "id": "normalizer",
+        "type": "text_normalizer",
+        "inputs": ["input"],
+        "config": {
+          "lowercase": true,
+          "trim_spaces": true,
+          "expand_contractions": true
+        }
+      },
+      {
+        "id": "tokenizer",
+        "type": "tokenizer",
+        "inputs": ["normalizer"],
+        "config": {
+          "method": "whitespace",
+          "max_length": 128
+        }
+      },
+      {
+        "id": "spike_detector",
+        "type": "spike_detector",
+        "inputs": ["normalizer"],
+        "parallel": true,
+        "config": {
+          "window_size": 60,
+          "threshold": "${SPIKE_THRESHOLD}"
+        }
+      },
+      {
+        "id": "pattern_matcher",
+        "type": "pattern_matcher",
+        "inputs": ["tokenizer"],
+        "parallel": true,
+        "config": {
+          "patterns": ["pog", "omg", "wow", "insane", "clutch", "lets go"],
+          "fuzzy_match": true,
+          "threshold": 0.85
+        }
+      },
+      {
+        "id": "aggregator",
+        "type": "aggregator",
+        "inputs": ["spike_detector", "pattern_matcher"],
+        "config": {
+          "strategy": "${AGGREGATION_STRATEGY}",
+          "weights": {
+            "spike_detector": 0.5,
+            "pattern_matcher": 0.5
+          },
+          "threshold": "${DETECTION_THRESHOLD}",
+          "min_signals": 1,
+          "generate_reason": true
+        }
+      },
+      {
+        "id": "csv_output",
+        "type": "comprehensive_csv",
+        "inputs": ["aggregator"],
+        "config": {
+          "path": "${OUTPUT_PATH}",
+          "include_lineage": true,
+          "include_all_scores": true,
+          "include_raw_text": true,
+          "include_metadata": true,
+          "buffer_size": 50
+        }
+      }
+    ]
+  }
+}

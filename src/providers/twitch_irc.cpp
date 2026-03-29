@@ -1,184 +1,153 @@
-#include "../../include/providers/twitch_irc.h"
+#include "providers/twitch_irc.h"
 #include <iostream>
+#include <boost/asio.hpp>
+#include <chrono>
+#include <thread>
 
 namespace ctic {
 namespace providers {
 
-void TwitchIRC::send_raw(const std::string& msg) {
-    std::string full_msg = msg + "\r\n";
-    ::send(sockfd_, full_msg.c_str(), full_msg.length(), 0);
+TwitchIRC::TwitchIRC(const std::string& host, int port, const std::string& password, const std::string& channel)
+    : irc_connection_(host, port), password_(password), channel_(channel), connected_(false), message_count_(0) {
+    // Initialization
 }
 
-std::string TwitchIRC::receive_line() {
-    while (true) {
-        size_t pos = buffer_.find("\r\n");
-        if (pos != std::string::npos) {
-            std::string line = buffer_.substr(0, pos);
-            buffer_.erase(0, pos + 2);
-            return line;
-        }
-        
-        char temp[4096];
-        ssize_t received = recv(sockfd_, temp, sizeof(temp) - 1, 0);
-        if (received <= 0) {
-            connected_ = false;
-            return "";
-        }
-        temp[received] = '\0';
-        buffer_ += temp;
-    }
+void TwitchIRC::run() {
+    irc_connection_.run();
 }
 
-bool TwitchIRC::connect(const std::string& channel) {
-    channel_ = channel;
+bool TwitchIRC::connect() {
+    std::cout << "[TwitchIRC] Starting connection..." << std::endl;
     
-    struct hostent* server = gethostbyname("irc.chat.twitch.tv");
-    if (!server) {
+    // First, establish TCP connection
+    if (!irc_connection_.connect()) {
+        std::cerr << "[TwitchIRC] TCP connection failed" << std::endl;
         return false;
     }
     
-    sockfd_ = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd_ < 0) {
-        return false;
-    }
+    std::cout << "[TwitchIRC] TCP connected, sending auth..." << std::endl;
     
-    struct sockaddr_in serv_addr;
-    std::memset(&serv_addr, 0, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    std::memcpy(&serv_addr.sin_addr.s_addr, server->h_addr, server->h_length);
-    serv_addr.sin_port = htons(6667);
-    
-    if (::connect(sockfd_, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
-        return false;
-    }
-    
-    send_raw("CAP REQ :twitch.tv/tags twitch.tv/commands twitch.tv/membership");
-    
-    std::string nick = "justinfan" + std::to_string(10000 + (std::rand() % 90000));
-    send_raw("PASS oauth:blah");
-    send_raw("NICK " + nick);
-    send_raw("USER " + nick + " 0 * :" + nick);
-    
+    // send PASS
+    irc_connection_.sendPassword(password_);
+    std::cout << "[TwitchIRC] Sent PASS" << std::endl;
+
+    // send NICK and USER
+    std::string nick = "justinfan" + std::to_string(rand() % 100000);
+    irc_connection_.send("NICK " + nick + "\r\n");
+    std::cout << "[TwitchIRC] Sent NICK: " << nick << std::endl;
+    irc_connection_.send("USER " + nick + " 0 * :" + nick + "\r\n");
+    std::cout << "[TwitchIRC] Sent USER" << std::endl;
+
+    // Wait for welcome message
+    std::cout << "[TwitchIRC] Waiting for welcome message..." << std::endl;
     auto start = std::chrono::steady_clock::now();
     bool got_welcome = false;
-    
+
     while (!got_welcome) {
         auto now = std::chrono::steady_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - start).count();
         if (elapsed > 10) {
+            std::cerr << "[TwitchIRC] Timeout waiting for welcome message" << std::endl;
             return false;
         }
-        
-        std::string line = receive_line();
+
+        std::string line = irc_connection_.readLine();
         if (line.empty()) {
-            return false;
-        }
-        
-        if (line.find("PING") == 0) {
-            std::string pong = "PONG" + line.substr(4);
-            send_raw(pong);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
             continue;
         }
         
-        if (line.find("001") != std::string::npos) {
+        std::cout << "[TwitchIRC] Received: " << line << std::endl;
+
+        if (line.find("Welcome") != std::string::npos) {
+            std::cout << "[TwitchIRC] Got welcome message!" << std::endl;
             got_welcome = true;
         }
-        
-        if (line.find("Login authentication failed") != std::string::npos) {
-            return false;
-        }
     }
-    
-    send_raw("JOIN #" + channel);
-    
-    start = std::chrono::steady_clock::now();
-    bool joined = false;
-    
-    while (!joined) {
-        auto now = std::chrono::steady_clock::now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - start).count();
-        if (elapsed > 5) {
-            return false;
-        }
-        
-        std::string line = receive_line();
-        if (line.empty()) {
-            return false;
-        }
-        
-        if (line.find("PING") == 0) {
-            std::string pong = "PONG" + line.substr(4);
-            send_raw(pong);
-            continue;
-        }
-        
-        std::string expected_join = "JOIN #" + channel;
-        if (line.find(expected_join) != std::string::npos) {
-            joined = true;
-        }
-    }
+
+    // Join the channel
+    std::cout << "[TwitchIRC] Joining channel #" << channel_ << std::endl;
+    irc_connection_.send("JOIN #" + channel_ + "\r\n");
     
     connected_ = true;
+    std::cout << "[TwitchIRC] Connected successfully!" << std::endl;
+
     return true;
 }
 
-std::string TwitchIRC::read_line() {
-    std::string line = receive_line();
-    if (line.empty()) return "";
-    
-    if (line.find("PING") == 0) {
-        std::string pong = "PONG" + line.substr(4);
-        send_raw(pong);
-        return read_line();
+std::string TwitchIRC::readLine() {
+    return irc_connection_.readLine();
+}
+
+std::string TwitchIRC::extract_twitch_channel_from_url(const std::string& url) {
+    // Remove protocol and www
+    std::string cleaned = url;
+    std::replace(cleaned.begin(), cleaned.end(), ':', ' ');
+    std::replace(cleaned.begin(), cleaned.end(), '/', ' ');
+    std::istringstream iss(cleaned);
+    std::string part;
+
+    // Skip "www.twitch.tv"
+    while (iss >> part) {
+        if (part == "www.twitch.tv") {
+            if (iss >> part) {
+                return part; // Return the channel name
+            }
+        }
     }
-    
-    message_count_++;
-    return line;
+
+    return ""; // Return empty string if parsing failed
 }
 
 bool TwitchIRC::parse_message(const std::string& raw, std::string& username, std::string& content) {
-    size_t privmsg_pos = raw.find("PRIVMSG #" + channel_);
-    if (privmsg_pos == std::string::npos) return false;
+    // Example message: ":justin!justin@justin.tmi.twitch.tv PRIVMSG #justin :Hello, world!"
+    // Find the first space to separate prefix from command
+    size_t first_space = raw.find(' ');
+    if (first_space == std::string::npos) return false;
     
-    size_t user_start = raw.find(":");
-    if (user_start == std::string::npos) return false;
+    std::string prefix = raw.substr(0, first_space);
     
-    if (raw[0] == '@') {
-        size_t tag_end = raw.find(" :");
-        if (tag_end != std::string::npos) {
-            user_start = raw.find(":", tag_end);
-            if (user_start == std::string::npos) return false;
-        }
-    }
+    // Find the command (PRIVMSG)
+    size_t second_space = raw.find(' ', first_space + 1);
+    if (second_space == std::string::npos) return false;
     
-    size_t user_end = raw.find("!", user_start);
-    if (user_end == std::string::npos) return false;
-    username = raw.substr(user_start + 1, user_end - user_start - 1);
+    std::string command = raw.substr(first_space + 1, second_space - first_space - 1);
     
-    size_t content_start = raw.rfind(" :");
-    if (content_start == std::string::npos || content_start < privmsg_pos) return false;
-    content = raw.substr(content_start + 2);
+    if (command != "PRIVMSG") return false;
+    
+    // Find the channel parameter
+    size_t third_space = raw.find(' ', second_space + 1);
+    if (third_space == std::string::npos) return false;
+    
+    // Find the message content (starts with :)
+    size_t msg_start = raw.find(':', third_space + 1);
+    if (msg_start == std::string::npos) return false;
+    
+    // Extract username from prefix (remove leading : and extract before !)
+    size_t exclamation = prefix.find('!');
+    if (exclamation == std::string::npos || exclamation == 0) return false;
+    username = prefix.substr(1, exclamation - 1); // Remove leading :
+    
+    // Extract message content
+    content = raw.substr(msg_start + 1);
     
     return true;
 }
 
 void TwitchIRC::disconnect() {
-    if (sockfd_ >= 0) {
-        close(sockfd_);
-        sockfd_ = -1;
-    }
+    irc_connection_.disconnect();
     connected_ = false;
 }
 
 bool TwitchIRC::test_connection(const std::string& channel, int timeout_seconds) {
-    if (!connect(channel)) {
+    if (!connect()) {
         return false;
     }
-    
+
     auto start = std::chrono::steady_clock::now();
     while (std::chrono::duration_cast<std::chrono::seconds>(
             std::chrono::steady_clock::now() - start).count() < timeout_seconds) {
-        std::string line = read_line();
+        std::string line = readLine();
         if (!line.empty()) {
             std::string username, content;
             if (parse_message(line, username, content)) {
@@ -187,7 +156,7 @@ bool TwitchIRC::test_connection(const std::string& channel, int timeout_seconds)
             }
         }
     }
-    
+
     disconnect();
     return true;
 }

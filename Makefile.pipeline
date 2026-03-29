@@ -1,0 +1,32 @@
+# Makefile for Pipeline Engine
+CXX = g++
+CXXFLAGS = -std=c++17 -Wall -O2 -I./include
+LDFLAGS = -ldl -pthread
+
+# Target executable
+TARGET = pipeline_test
+
+# Source files
+SOURCES = src/pipeline/pipeline_test.cpp
+
+# Build target
+$(TARGET): $(SOURCES)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+
+# Build plugin
+plugin:
+	$(MAKE) -C plugins/example
+
+# Build all
+all: $(TARGET) plugin
+
+# Run test
+test: all
+	./$(TARGET)
+
+# Clean
+clean:
+	rm -f $(TARGET)
+	$(MAKE) -C plugins/example clean
+
+.PHONY: all plugin test clean

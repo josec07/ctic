@@ -1,0 +1,72 @@
+{
+  "version": "1.0",
+  "name": "CTIC Engine Configuration",
+  "description": "Global engine settings and detector registry",
+  "engine": {
+    "version": "2.0",
+    "reload_interval_seconds": 30,
+    "output_format": "csv",
+    "buffer_size": 1000,
+    "max_creators": 10,
+    "thread_pool_size": 4
+  },
+  "defaults": {
+    "profile": "balanced",
+    "enabled_tiers": ["high", "medium"],
+    "log_level": "info"
+  },
+  "detectors": [
+    {
+      "id": "semantic_burst",
+      "type": "fuzzy_match",
+      "enabled": true,
+      "description": "Detects semantic bursts using fuzzy string matching",
+      "config": {
+        "algorithm": "levenshtein",
+        "similarity_threshold": 0.8,
+        "window_seconds": 30,
+        "min_word_length": 3,
+        "collapse_repeated_chars": true,
+        "wordlist_dir": "config/wordlists"
+      }
+    },
+    {
+      "id": "volume_spike",
+      "type": "statistical",
+      "enabled": true,
+      "description": "Detects chat volume spikes using Z-score analysis",
+      "config": {
+        "algorithm": "zscore",
+        "window_samples": 60,
+        "sigma_threshold": 3.0,
+        "min_messages": 5
+      }
+    }
+  ],
+  "tier_configs": {
+    "high": {
+      "burst_threshold": 3,
+      "cooldown_seconds": 60,
+      "require_unique_users": 2,
+      "wordlist": "high.json"
+    },
+    "high_negative": {
+      "burst_threshold": 5,
+      "cooldown_seconds": 45,
+      "require_unique_users": 3,
+      "wordlist": "high_negative.json"
+    },
+    "medium": {
+      "burst_threshold": 8,
+      "cooldown_seconds": 90,
+      "require_unique_users": 4,
+      "wordlist": "medium.json"
+    },
+    "easy": {
+      "burst_threshold": 15,
+      "cooldown_seconds": 120,
+      "require_unique_users": 5,
+      "wordlist": "easy.json"
+    }
+  }
+}
