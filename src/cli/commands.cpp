@@ -53,8 +53,8 @@ int cmd_configure(const std::string& url_or_channel) {
     // Test connection
     std::cout << "[TEST] Connecting to chat..." << std::endl;
     
-    providers::TwitchIRC irc;
-    if (!irc.connect(channel)) {
+    providers::TwitchIRC irc("irc.twitch.tv", 6667, "SCHMOOPIIE", channel);
+    if (!irc.connect()) {
         std::cerr << "Error: Failed to connect to #" << channel << std::endl;
         return 1;
     }
@@ -66,7 +66,7 @@ int cmd_configure(const std::string& url_or_channel) {
     
     while (g_running && std::chrono::duration_cast<std::chrono::seconds>(
             std::chrono::steady_clock::now() - start).count() < 10) {
-        std::string line = irc.read_line();
+        std::string line = irc.readLine();
         if (!line.empty()) {
             std::string username, content;
             if (irc.parse_message(line, username, content)) {

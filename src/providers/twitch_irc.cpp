@@ -32,7 +32,7 @@ bool TwitchIRC::connect() {
     std::cout << "[TwitchIRC] Sent PASS" << std::endl;
 
     // send NICK and USER
-    std::string nick = "justin" + std::to_string(rand() % 1000);
+    std::string nick = "justinfan" + std::to_string(rand() % 100000);
     irc_connection_.send("NICK " + nick + "\r\n");
     std::cout << "[TwitchIRC] Sent NICK: " << nick << std::endl;
     irc_connection_.send("USER " + nick + " 0 * :" + nick + "\r\n");

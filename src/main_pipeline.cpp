@@ -197,7 +197,7 @@ int listPlugins() {
     registry.loadPluginsFromDirectory("plugins/detectors");
     registry.loadPluginsFromDirectory("plugins/outputs");
     registry.loadPluginsFromDirectory("plugins/models");
-    registry.loadPluginsFromDirectory("plugins/inputs")
+    registry.loadPluginsFromDirectory("plugins/inputs");
     
     std::cout << "Available Node Types:" << std::endl;
     std::cout << std::endl;
